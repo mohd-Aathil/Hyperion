@@ -1,0 +1,46 @@
+# Render Blueprint for the Hyperion backend.
+#
+# Use it either way:
+#   * Render dashboard -> New -> Blueprint -> pick this repo (Render reads this file), or
+#   * copy the values below into a manually created Web Service's settings.
+#
+# Secret values are marked `sync: false`, so Render prompts you for them in the
+# dashboard instead of storing them in this committed file. Paste the Gemini,
+# Finnhub and Alpha Vantage values from your local .env.
+
+services:
+  - type: web
+    name: hyperion-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile.api
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      # --- Supabase: not secret, ships to the browser anyway ---
+      - key: SUPABASE_URL
+        value: https://ndsymoyjcaihptacuytk.supabase.co
+      - key: SUPABASE_JWKS_URL
+        value: https://ndsymoyjcaihptacuytk.supabase.co/auth/v1/.well-known/jwks.json
+      - key: SUPABASE_JWT_SECRET
+        value: ""
+      # --- Secrets: Render will ask you for these ---
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: FINNHUB_API_KEY
+        sync: false
+      - key: ALPHAVANTAGE_API_KEY
+        sync: false
+      # --- Non-secret configuration ---
+      # Any current id from https://ai.google.dev/gemini-api/docs/models. The backend
+      # skips retired ids, but keep this current so the primary model is the one used.
+      # Cheaper option: gemini-3.1-flash-lite
+      - key: GEMINI_MODEL
+        value: gemini-3.6-flash
+      - key: ALPHAVANTAGE_NEWS_TOPICS
+        value: financial_markets
+      # Never enable demo auth in production: it skips token verification.
+      - key: ALLOW_DEMO_AUTH
+        value: "false"
+      - key: CORS_ORIGINS
+        value: https://your-frontend-domain.vercel.app
