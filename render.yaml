@@ -42,5 +42,7 @@ services:
       # Never enable demo auth in production: it skips token verification.
       - key: ALLOW_DEMO_AUTH
         value: "false"
+      # Exact frontend origins (no trailing slash). Add more comma-separated origins
+      # when you attach a custom domain to the Vercel project.
       - key: CORS_ORIGINS
-        value: https://your-frontend-domain.vercel.app
+        value: https://hyperion-nine-rust.vercel.app

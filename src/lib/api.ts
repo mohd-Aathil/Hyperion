@@ -75,8 +75,15 @@ async function request<T>(path: string, init: RequestInit = {}, accessToken?: st
   }
   if (!response.ok) {
     const body = await response.json().catch(() => null)
-    const detail = body && typeof body.detail === 'string' ? body.detail : `Request failed with status ${response.status}`
-    throw new Error(detail)
+    if (body && typeof body.detail === 'string') throw new Error(body.detail)
+    // 404/405 with no configured base URL means the build was served by a static host
+    // (Vercel/Netlify) that has no /api route: the backend lives on another origin.
+    if (!apiBaseUrl() && (response.status === 404 || response.status === 405)) {
+      throw new Error(
+        'This site has no API attached. Set VITE_API_URL to the backend origin and redeploy the frontend.',
+      )
+    }
+    throw new Error(`Request failed with status ${response.status}`)
   }
   return response.json() as Promise<T>
 }

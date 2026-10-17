@@ -73,3 +73,39 @@
 - The keyword guard refuses "P/E ratio" written with a slash ("pe ratio" without one passes). Cosmetic; any rephrase reaches the model, and the README documents the keyword nature of the guard.
 - Alpha Vantage free tier rejects `NEWS_SENTIMENT` (premium-only) — the feed automatically falls back to Finnhub, which works. Expected, documented in README §13.
 - `/health` keeps an `"openrouter": true` *alias* mirroring the Gemini key state for older clients; harmless, documented in code.
+
+## 9. Live deployment check (2026-10-17)
+
+**Symptom:** the deployed site loaded, sign-in worked, but chat returned *"Request failed with status 404"*.
+
+**Cause (verified, not guessed):**
+
+| Probe | Result |
+|---|---|
+| `GET https://hyperion-nine-rust.vercel.app/` | 200 — static bundle is live, Supabase auth works |
+| `POST https://hyperion-nine-rust.vercel.app/api/chat` | **404** `NOT_FOUND` — the Vercel project has no `/api` route |
+| `GET https://hyperion-api.onrender.com/health` | **404** — no backend service was deployed |
+
+So the FastAPI backend simply was not running anywhere. Vercel only hosts the static frontend; the
+API needs its own host, and the frontend needs `VITE_API_URL` baked in so it stops calling its own origin.
+
+**Repo-side fixes applied:**
+
+- `render.yaml` — `CORS_ORIGINS` set to the real frontend origin (`https://hyperion-nine-rust.vercel.app`)
+  so the blueprint no longer ships the placeholder.
+- `src/lib/api.ts` — a 404/405 on `/api` with no `VITE_API_URL` now says *"This site has no API attached…"*
+  instead of the generic status code, so this class of misconfiguration is self-explanatory.
+- The deployment runbook itself lives in this document (§6, §9) — the trimmed `README.md` on `main` no
+  longer carries the long hosting walkthrough, so keep this file with the repo until that is restored.
+
+**Verified locally this pass:**
+
+- `docker build -f Dockerfile.api` succeeds on `python:3.12-slim` (all wheels, no compiler needed).
+- Container boots and serves: `/health` → 200 with `gemini`, `finnhub`, `alphavantage` all `true`.
+- `/api/market` signed out → **401** (demo auth off).
+- CORS preflight from the Vercel origin → 200, echoes `access-control-allow-origin`, allows
+  `Authorization`, `allow-credentials: true`; preflight from a foreign origin → **400**.
+- `VITE_API_URL=… npm run build` bakes the backend host into `dist/assets/*.js` (grep-confirmed).
+
+**Still needed (dashboard only):** create the Render service from `render.yaml`, paste the three provider
+keys, then add `VITE_API_URL=https://<your-api>.onrender.com` to Vercel and redeploy.
